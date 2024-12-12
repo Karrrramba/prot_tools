@@ -81,6 +81,65 @@ load("data/aa_dict.rda")
 load("data/aa_mw_mono.rda")
 load("data/aa_mw_avg.rda")
 
+
+
 calculate_aa_n <- function(aa_seq, n, m = NA){
   
+}
+
+# digest proteins
+digest_protein <- function(aa_seqs, missed = 0, specificity = c("P", "A"), min_length = 1) {
+  
+  results <- list()
+  
+  for (i in seq_along(aa_seqs)){
+    
+    aa_seq <- stringr::str_extract(aa_seqs[i][[1]], "(?<=\\.)[A-Z]+(?=\\.|$)")
+    peptides <- list()
+    current_pep <- ""
+    aa_index <- ""
+    
+    for (j in 1:nchar(aa_seq)) {
+      aa <- substring(aa_seq, j, j)
+      current_pep <- paste0(current_pep, aa)
+      
+      # add peptide length filter
+      
+      if (aa %in% specificity){
+        peptides <- append(peptides, current_pep)
+        if(missed == 0){
+          current_pep <- ""
+        }
+      }
+      # if max(missed): add to peptides and reset current_pep
+      if (sum(stringr::str_count(current_pep, specificity) == missed + 1)){
+        peptides <- append(peptides, current_pep)
+        current_pep <- ""
+      }
+    }  
+    
+    if (nchar(current_pep) > 0){
+      peptides <- append(peptides, current_pep)
+    }
+    
+    peptides <- Filter(function(i) nchar(i) >= min_length, peptides)
+    
+    prot_pep <- list(peptides = peptides)
+    results[[names(aa_seqs[i])]] <- prot_pep
+    
+    # count basic aas in peptide
+    basic_aa <- c("K", "R", "H")
+    n_basic <- NA
+    # n_acidic <- NA
+    for(p in peptides){
+      n_basic <- sum(stringr::str_count(p, basic_aa))
+    }
+    # 
+    # results <- data.frame(
+    #   n_acidic = n_acidic, 
+    #   n_basic = n_basic
+    # )
+    # return(results)
+  }
+  return(results)
 }
