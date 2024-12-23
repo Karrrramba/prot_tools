@@ -1,17 +1,28 @@
 # prot_tools
-library()
-## hydropathy
-# hyd <- "Ala:  1.800  Arg: -4.500  Asn: -3.500  Asp: -3.500  Cys:  2.500  Gln: -3.500  Glu: -3.500  Gly: -0.400  His: -3.200  Ile:  4.500  Leu:  3.800  Lys: -3.900  Met:  1.900  Phe:  2.800  Pro: -1.600  Ser: -0.800  Thr: -0.700  Trp: -0.900  Tyr: -1.300  Val:  4.200"
-# hyd_vals <- as.numeric(unlist(stringr::str_extract_all(hyd, "[\\d+|\\.|\\-]+")))
-# hyd_names <- unlist(stringr::str_extract_all(hyd, "([a-zA-Z]+)"))
-# 
-# hydropath_ref <- setNames(hyd_vals, aa_code_1[1:20])
-# hydropath_ref
-# save(hydropath_ref, file = "data/hdrpth_ref.rda")
 
-s <- "FYPYPC"
+##load data
 load('data/hdrpth_ref.rda')
+load("data/aa_dict.rda")
+load("data/aa_mw_mono.rda")
+load("data/aa_mw_avg.rda")
 
+# example data
+s2 <- list(
+  h1_a = "PYVALFEKCCLIGCTKRSLAKYC", 
+  h1_b = "VAAKWKDDVIKLCGRELVRAQIAICGMSTWS",
+  h2_a = "LYSALANKCCHVGCTKRSLARFC",
+  h2_b = "DSWMEEVIKLCGRELVRAQIAICGMSTWS",
+  h3_a = "DVLAGLSSSCCKWGCSKSEISS",
+  h3_b = "RAAPYGVRLCGREFIRAVIFTCGGSRW"
+)
+
+read_fasta <- function(path){
+  data <- return(Biostrings::readAAStringSet(path))
+  
+  results <- setNames(list(stringr::str_extract(data$names, "\\|(.+)\\|"), ), stringr::str_extract(data, "\\|(.+)$"))
+read_fasta("../relaxin/relaxin_superfamily_uniprotkb_2024_11_26.fasta")
+
+## hydropathy
 calculate_hydropathy_index <- function(aa_seq) {
   s <- unlist(strsplit(aa_seq, split = ""))
   h <- 0
@@ -32,78 +43,143 @@ unlist(stringr::str_extract_all(s, "([A-Z]\\([a-z]+\\))"))
 ## mass calculation
 # accepts U/Sel for selenocysteine and O/Pyl for pyrrolysine
 # Three-letter code is accepted but generally the output will be in one-letter code.
-# aa_masses <- "
-# monoisotopic	average
-# Alanine (A)	71.03711	71.0788
-# Arginine (R)	156.10111	156.1875
-# Asparagine (N)	114.04293	114.1038
-# Aspartic acid (D)	115.02694	115.0886
-# Cysteine (C)	103.00919	103.1388
-# Glutamic acid (E)	129.04259	129.1155
-# Glutamine (Q)	128.05858	128.1307
-# Glycine (G)	57.02146	57.0519
-# Histidine (H)	137.05891	137.1411
-# Isoleucine (I)	113.08406	113.1594
-# Leucine (L)	113.08406	113.1594
-# Lysine (K)	128.09496	128.1741
-# Methionine (M)	131.04049	131.1926
-# Phenylalanine (F)	147.06841	147.1766
-# Proline (P)	97.05276	97.1167
-# Serine (S)	87.03203	87.0782
-# Threonine (T)	101.04768	101.1051
-# Tryptophan (W)	186.07931	186.2132
-# Tyrosine (Y)	163.06333	163.1760
-# Valine (V)	99.06841	99.1326
-# 
-# Selenocysteine (U)	150.953636	150.0388
-# Pyrrolysine (O)	237.147727	237.3018
-# "
-# 
-# aa_masses_mono <- gsub("\t", "", unlist(stringr::str_extract_all(aa_masses, "\\t(\\d+\\.\\d+)\\t")))
-# aa_masses_avg <- gsub("\n", "", unlist(stringr::str_extract_all(aa_masses, "(\\d+\\.\\d+)\n")))
-# aa_names <- unlist(stringr::str_remove_all(gsub("\n", "", unlist(stringr::str_extract_all(aa_masses, "\n.+\t"))), "\t.+"))[-1]
-# 
-# aa_codes <- unlist(stringr::str_extract_all(aa_names, "\\b([a-zA-Z]{1,3})"))
-# aa_codes <- na.omit(gsub("^[a-z]{3}", NA, aa_codes))
-# aa_code_3 <- na.omit(gsub("[A-Z]$", NA, aa_codes))
-# aa_code_3 <- gsub("Sel", "Sec", aa_code_3)
-# aa_code_3 <- gsub("Pyr", "Pyl", aa_code_3)
-# aa_code_1 <- unlist(stringr::str_extract_all(aa_codes, "[A-Z]$"))
-# 
-# aa_dict <- setNames(aa_code_1, aa_code_3)
-# save(aa_dict, file = "data/aa_dict.rda")
-# aa_mw_mono <- setNames(aa_masses_mono, aa_code_1)
-# save(aa_mw_mono, file = "data/aa_mw_mono.rda")
-# aa_mw_avg <- setNames(aa_masses_avg, aa_code_1)
-# save(aa_mw_avg, file = "data/aa_mw_avg.rda")
 
-load("data/aa_dict.rda")
-load("data/aa_mw_mono.rda")
-load("data/aa_mw_avg.rda")
+
+calculate_mass_avg <- function(aa_seq){
+  mass <- 0
+  for (a in unlist(strsplit(aa_seq, ""))) {
+    if (a %in% names(aa_mw_avg)){
+      mass <- mass + unname(aa_mw_avg[a])
+    }
+  }
+  return(mass)
+}
+
+calculate_mass_mono <- function(aa_seq){
+  mass <- 0
+  for (a in unlist(strsplit(aa_seq, ""))) {
+    if (a %in% names(aa_mw_mono)){
+      mass <- mass + unname(aa_mw_mono[a])
+    }
+  }
+  return(mass)
+}
+
+# calculate n 
+calculate_mol <- function(aa_seq, m = NA, avg = TRUE){
+  # if (!is.numeric(m)){
+  #   tryCatch()
+  # }
+  
+  if (avg == TRUE) {
+    pep_mw <- calculate_mass_avg(aa_seq)
+  } else {
+    pep_mw <- calcualte_mass_mono(aa_seq)
+  }
+  n <- m / pep_mw
+  return(n)
+}
 
 
 
-calculate_aa_n <- function(aa_seq, n, m = NA){
+#splits amino acids by index 
+split_seq_index <- (aa_seq, index = NA){
+  peptides <- NA
+  current_pep <- NA
+  
+  for (i in aa_seq) {
+    
+  }
+    
+}
+
+calculate_aa_mass <- function(aa_seq, aa, avg = TRUE, prot_m = 1) {
+  
+  #throw error if !is.character(aa_seq) or !is.character(aa) 
+  if (!is.character(aa_seq) || !is.character(aa)) {
+    stop("Both aa_seq and aa should be character strings.")
+  }
+  
+  s <- unlist(strsplit(toupper(aa_seq), split = ""))
+  aa <- unlist(strsplit(toupper(aa), NULL))
+  
+  
+  if (!all(unique(aa) %in% names(aa_mw_avg))) {
+    stop("Non-canonical amino acid detected. Please use single letter codes as found in aa_dict.")
+  }
+  
+  if (!all(unique(aa) %in% unique(s))) {
+    warning("One or more specified amino acids not found in sequence.")
+  }
+  
+  st <- table(s)
+  #  if "use_all" use all amino acids in protein sequence
+  if (any(aa == "use_all")) {
+    aoi <- st
+  } else {
+    # extract only specified amino acids
+    aoi <- st[aa]
+  }
+  # calculate total protein mass
+  protein_aa_m <- setNames(rep(0, length(aoi)), names(aoi))
+  for (a in names(st)) {
+    protein_aa_m[a] <- st[[a]] * aa_mw_avg[[a]]
+  }
+  protein_m <- sum(protein_aa_m)
+  
+  # calculate aa masses 
+  aa_percent_m <- setNames(rep(0, length(aoi)), names(aoi))
+  aa_m_total <- setNames(rep(0, length(aoi)), names(aoi))
+  
+  for (a in names(aoi)) {
+   aa_percent_m[a] <- ((aoi[[a]] * (aa_mw_avg[[a]] + 18)) / protein_m) * 100
+   aa_m_total[a] <- prot_m * (aa_percent_m[[a]] / 100)
+  }
+  
+  print(aa_m_total)
+}
+
+calculate_aa_mass("acafg", c("a", "c"), prot_m = 1)
+
+
+## protein summary
+protein_summary <- function(aa_seq){
+  s <- unlist(strsplit(aa_seq, split = ""))
+  r <- table(s)/length(s) * 100
+  
+  return(data.frame(
+    AminoAcid = names(s),
+    OccurrencesTotal = as.vector(s),
+    OccurrencesRelative = as.vector(r)
+    ))
+  return(data.frame(
+    AcidicAATotal = names()
+  ))
+# #acidic and basic aa
+# theoretical #peptides and avg pep length?
   
 }
 
+
+
 # digest proteins
-digest_protein <- function(aa_seqs, missed = 0, specificity = c("P", "A"), min_length = 1) {
-  
+digest_protein <- function(aa_seq, missed = 0, 
+                           specificity = c("P", "A"), 
+                           min_length = 1, 
+                           tabulate = TRUE) {
   results <- list()
   
-  for (i in seq_along(aa_seqs)){
+  for (i in seq_along(aa_seq)){
     
-    aa_seq <- stringr::str_extract(aa_seqs[i][[1]], "(?<=\\.)[A-Z]+(?=\\.|$)")
+    aa_seq <- stringr::str_extract(aa_seq[i][[1]], "(?<=\\.)[A-Z]+(?=\\.|$)")
+  
     peptides <- list()
     current_pep <- ""
     aa_index <- ""
-    
-    for (j in 1:nchar(aa_seq)) {
-      aa <- substring(aa_seq, j, j)
+  
+    for (i in unlist(strsplit(aa_seq, ""))) {
+      aa <- substring(aa_seq, i, i)
       current_pep <- paste0(current_pep, aa)
-      
-      # add peptide length filter
       
       if (aa %in% specificity){
         peptides <- append(peptides, current_pep)
@@ -117,7 +193,7 @@ digest_protein <- function(aa_seqs, missed = 0, specificity = c("P", "A"), min_l
         current_pep <- ""
       }
     }  
-    
+      
     if (nchar(current_pep) > 0){
       peptides <- append(peptides, current_pep)
     }
@@ -126,20 +202,42 @@ digest_protein <- function(aa_seqs, missed = 0, specificity = c("P", "A"), min_l
     
     prot_pep <- list(peptides = peptides)
     results[[names(aa_seqs[i])]] <- prot_pep
+      
+      # count basic aas in peptide
+      # basic_aa <- c("K", "R", "H")
+      # acidic_aa <- c("D", "E")
+      # n_base <- NA
+      # n_acid <- NA
     
-    # count basic aas in peptide
-    basic_aa <- c("K", "R", "H")
-    n_basic <- NA
-    # n_acidic <- NA
-    for(p in peptides){
-      n_basic <- sum(stringr::str_count(p, basic_aa))
+      # for (p in peptides) {
+      #   for (aa in p)
+      #   n_base <- sum(stringr::str_count(aa, basic_aa))
+      #   n_acid <- sum(stringr::str_count(aa, acidic_aa))
+      # }
+      
+      # return(results)
+    
+    if (tabulate == TRUE) {
+      results <- data.frame(
+        "protein" = NA,
+        "peptide" = NA,
+        "missed_cleavages" = NA,
+        "basic_aas" = n_base,
+        "acidic_aas" = n_acid
+      )
     }
-    # 
-    # results <- data.frame(
-    #   n_acidic = n_acidic, 
-    #   n_basic = n_basic
-    # )
-    # return(results)
   }
   return(results)
+}
+
+digest_protein(s)
+
+basic_aa <- c("K", "R", "H")
+acidic_aa <- c("D", "E")
+n_base <- NA
+n_acid <- NA
+for (p in peptides) {
+  for (aa in p)
+    n_base <- sum(stringr::str_count(aa, basic_aa))
+    n_acid <- sum(stringr::str_count(aa, acidic_aa))
 }
