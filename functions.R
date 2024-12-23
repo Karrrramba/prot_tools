@@ -79,15 +79,18 @@ calculate_mol <- function(aa_seq, m = NA, avg = TRUE){
   n <- m / pep_mw
   return(n)
 }
-
-
+# format protein sequence to upper case and single letter code
+transform_sequence <- function(aa_seq) {
+  s <- unlist(strsplit(toupper(aa_seq), NULL))
+  return(s)
+}
 
 #splits amino acids by index 
-split_seq_index <- (aa_seq, index = NA){
+split_seq_by_index <- (aa_seq, index = NA){
   peptides <- NA
   current_pep <- NA
-  
-  for (i in aa_seq) {
+  aa_seq <- transform_sequence(aa_seq)
+  for (a in aa_seq) {
     
   }
     
