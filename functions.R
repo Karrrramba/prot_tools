@@ -1,12 +1,12 @@
 # prot_tools
 
-##load data
-load('data/hdrpth_ref.rda')
-load("data/aa_dict.rda")
-load("data/aa_mw_mono.rda")
-load("data/aa_mw_avg.rda")
+###load data
+load('data-raw/hydropath_ref.rda')
+load("data-raw/aa_dict.rda")
+load("data-raw/aa_mw_mono.rda")
+load("data-raw/aa_mw_avg.rda")
 
-# example data
+#### example data
 s2 <- list(
   h1_a = "PYVALFEKCCLIGCTKRSLAKYC", 
   h1_b = "VAAKWKDDVIKLCGRELVRAQIAICGMSTWS",
@@ -15,21 +15,43 @@ s2 <- list(
   h3_a = "DVLAGLSSSCCKWGCSKSEISS",
   h3_b = "RAAPYGVRLCGREFIRAVIFTCGGSRW"
 )
-
-# format protein sequence to upper case and single letter code
+## loading and formatting
+### format protein sequence to upper case and single letter code
 transform_sequence <- function(aa_seq) {
   s <- unlist(strsplit(toupper(aa_seq), NULL))
   return(s)
 }
 
-all(sapply(s2, is.character))
-read_fasta <- function(path){
-  data <- return(Biostrings::readAAStringSet(path))
+### read fasta
+read_fasta <- function(data){
+  d <- return(Biostrings::readAAStringSet(data))
   
-  results <- setNames(list(stringr::str_extract(data$names, "\\|(.+)\\|"), ), stringr::str_extract(data, "\\|(.+)$"))
-read_fasta("../relaxin/relaxin_superfamily_uniprotkb_2024_11_26.fasta")
+  data.frame(
+    "Sequence" = d@ranges@seq,
+    "UniprotID" = stringr::str_extract(d@ranges@NAMES, "\\|(.+)\\|"),\
+    "GeneName" = stringr::str_extract(d@ranges@NAMES, "")
+  )
+  # results <- setNames(list(stringr::str_extract(data$names, "\\|(.+)\\|"), ), stringr::str_extract(data, "\\|(.+)$"))
+}
+str(read_fasta("../relaxin/relaxin_superfamily_uniprotkb_2024_11_26.fasta"))
+read_fasta("../relaxin/relaxin_superfamily_uniprotkb_2024_11_26.fasta")@ranges@NAMES
 
-## hydropathy
+read_fasta2 <- function(data){
+  data.frame(
+    "GeneName" = NULL,
+    "UniprotID" = NULL,
+    "Sequence" = NULL
+    )
+  
+  current_entry <- NULL
+  
+  
+  results <- rbind(results)
+}
+
+
+## helper functions
+### hydropathy
 calculate_hydropathy_index <- function(aa_seq) {
   s <- unlist(strsplit(aa_seq, split = ""))
   h <- 0
@@ -41,16 +63,15 @@ calculate_hydropathy_index <- function(aa_seq) {
   return(h)
 }
 
-# identify modifications
+### identify modifications
 unlist(stringr::str_extract_all(s, "([A-Z]\\([a-z]+\\))"))
 # extract mod
 # check with mod_list
 # extract mod_mass and add to aa_mass
 
-## mass calculation
+### mass calculations
 # accepts U/Sel for selenocysteine and O/Pyl for pyrrolysine
 # Three-letter code is accepted but generally the output will be in one-letter code.
-
 
 calculate_mass_avg <- function(aa_seq){
   mass <- 0
@@ -191,11 +212,25 @@ protein_summary <- function(aa_seq){
 
 
 # digest proteins
-digest_protein <- function(aa_seq, missed = 0, 
+digest_protein <- function(aa_seq, 
+                           missed = 0, 
                            specificity = c("P", "A"), 
+                           combined = TRUE,
                            min_length = 1, 
                            tabulate = TRUE) {
-  results <- list()
+  # allow multi-protease digestion
+  
+  # loop specificities
+  
+  # if (combined) {
+  #   digest all peptides sequentially
+  # }
+  
+  
+  spec_start <- NULL
+  spec_stop <- NULL
+  
+  results <- NULL
   
   for (i in seq_along(aa_seq)){
     
