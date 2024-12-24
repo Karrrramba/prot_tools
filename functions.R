@@ -16,6 +16,13 @@ s2 <- list(
   h3_b = "RAAPYGVRLCGREFIRAVIFTCGGSRW"
 )
 
+# format protein sequence to upper case and single letter code
+transform_sequence <- function(aa_seq) {
+  s <- unlist(strsplit(toupper(aa_seq), NULL))
+  return(s)
+}
+
+all(sapply(s2, is.character))
 read_fasta <- function(path){
   data <- return(Biostrings::readAAStringSet(path))
   
@@ -66,10 +73,16 @@ calculate_mass_mono <- function(aa_seq){
 }
 
 # calculate n 
-calculate_mol <- function(aa_seq, m = NA, avg = TRUE){
-  # if (!is.numeric(m)){
-  #   tryCatch()
-  # }
+calculate_n <- function(aa_seq, mass = NA, avg = TRUE){
+  if (!is.numeric(m)){
+    stop("Mass must be numeric.")
+  }
+  
+  if (!is.character(aa_seq) | !is.list(aa_seq)) {
+    stop("Aa_seq must be a character vector or list")
+  } else if (all(sapply(aa_seq, is.character))) {
+    stop("All entries must be character strings.")
+  }
   
   if (avg == TRUE) {
     pep_mw <- calculate_mass_avg(aa_seq)
@@ -79,33 +92,46 @@ calculate_mol <- function(aa_seq, m = NA, avg = TRUE){
   n <- m / pep_mw
   return(n)
 }
-# format protein sequence to upper case and single letter code
-transform_sequence <- function(aa_seq) {
-  s <- unlist(strsplit(toupper(aa_seq), NULL))
-  return(s)
-}
 
-#splits amino acids by index 
-split_seq_by_index <- (aa_seq, index = NA){
-  peptides <- NA
-  current_pep <- NA
-  aa_seq <- transform_sequence(aa_seq)
-  for (a in aa_seq) {
-    
+
+#splits protein sequences into peptides by index 
+split_sequence_by_index <- function(aa_seq, index = NA){
+  
+  if (!is.character(index)) {
+    stop("Indices must be character, use '10-35' instead of 10-35.")
   }
-    
+  
+  s <- transform_sequence(aa_seq)
+  
+  peptides <- NULL
+  current_pep <- NULL
+  for (i in index) {
+    start_i <- as.numeric(strsplit(i, "-")[[1]][1])
+    print(start_i)
+    stop_i <- as.numeric(strsplit(i, "-")[[1]][2])
+    print(stop_i)
+    # throw error if start>stop
+    if (start_i > stop_i) {
+      stop("Start index is smaller than stop index.")
+    }
+    if (start_i < 1 | start_i > length(s) | stop_i > length(s)) {
+      stop("At least index is outside of protein sequence.")
+    }
+    print(s[start_i:stop_i])
+    current_pep <- paste0(s[start_i:stop_i], collapse = "")
+    peptides <- append(peptides, current_pep)
+  }
+  return(peptides)
 }
 
 calculate_aa_mass <- function(aa_seq, aa, avg = TRUE, prot_m = 1) {
   
-  #throw error if !is.character(aa_seq) or !is.character(aa) 
   if (!is.character(aa_seq) || !is.character(aa)) {
     stop("Both aa_seq and aa should be character strings.")
   }
   
-  s <- unlist(strsplit(toupper(aa_seq), split = ""))
-  aa <- unlist(strsplit(toupper(aa), NULL))
-  
+  s <- transform_sequence(aa_seq)
+  aa <- transform_sequence(aa)
   
   if (!all(unique(aa) %in% names(aa_mw_avg))) {
     stop("Non-canonical amino acid detected. Please use single letter codes as found in aa_dict.")
@@ -139,15 +165,14 @@ calculate_aa_mass <- function(aa_seq, aa, avg = TRUE, prot_m = 1) {
    aa_m_total[a] <- prot_m * (aa_percent_m[[a]] / 100)
   }
   
-  print(aa_m_total)
+  return(aa_m_total)
 }
 
 calculate_aa_mass("acafg", c("a", "c"), prot_m = 1)
 
-
 ## protein summary
 protein_summary <- function(aa_seq){
-  s <- unlist(strsplit(aa_seq, split = ""))
+  s <- transform_sequence(aa_seq)
   r <- table(s)/length(s) * 100
   
   return(data.frame(
