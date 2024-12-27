@@ -7,6 +7,8 @@ load("data-raw/aa_mw_mono.rda")
 load("data-raw/aa_mw_avg.rda")
 
 #### example data
+s1 <- "../relaxin/relaxin_superfamily_uniprotkb_2024_11_26.fasta"
+
 s2 <- list(
   h1_a = "PYVALFEKCCLIGCTKRSLAKYC", 
   h1_b = "VAAKWKDDVIKLCGRELVRAQIAICGMSTWS",
@@ -23,32 +25,36 @@ transform_sequence <- function(aa_seq) {
 }
 
 ### read fasta
-read_fasta <- function(data){
-  d <- return(Biostrings::readAAStringSet(data))
-  
-  data.frame(
-    "Sequence" = d@ranges@seq,
-    "UniprotID" = stringr::str_extract(d@ranges@NAMES, "\\|(.+)\\|"),\
-    "GeneName" = stringr::str_extract(d@ranges@NAMES, "")
-  )
-  # results <- setNames(list(stringr::str_extract(data$names, "\\|(.+)\\|"), ), stringr::str_extract(data, "\\|(.+)$"))
-}
-str(read_fasta("../relaxin/relaxin_superfamily_uniprotkb_2024_11_26.fasta"))
-read_fasta("../relaxin/relaxin_superfamily_uniprotkb_2024_11_26.fasta")@ranges@NAMES
-
-read_fasta2 <- function(data){
-  data.frame(
-    "GeneName" = NULL,
-    "UniprotID" = NULL,
-    "Sequence" = NULL
+read_fasta <- function(file, same_org = TRUE) {
+  # Read the file line by line
+  fasta <- readLines(file)
+  # Identify header lines
+  ind <- grep(">", fasta)
+  # Identify the sequence lines
+  s <- data.frame(ind = ind, from = ind + 1, to = c((ind - 1)[-1], length(fasta)))
+  # Process sequence lines
+  seqs <- rep(NA, length(ind))
+  for(i in 1:length(ind)) {
+    seqs[i] <- paste(fasta[s$from[i]:s$to[i]], collapse = "")
+  }
+  # Create a data frame 
+  d <- data.frame(
+    # Extract UniprotID
+    UniprotID = stringr::str_match(string = fasta[ind],pattern = "\\|(.+?)\\|")[, 2],
+    # Extract gene name
+    GeneName = stringr::str_match(string = fasta[ind],pattern = "[A-Z0-9]\\|([A-Z0-9_]+)")[, 2],
+    Sequence = seqs
     )
+  # Remove organism from gene name
+  if (same_org) {
+    d$GeneName <- gsub("_.*", "", d$GeneName)
+  }
   
-  current_entry <- NULL
-  
-  
-  results <- rbind(results)
+  # Return the data frame as a result object from the function
+  return(d)
 }
 
+data <- read_fasta(s1)
 
 ## helper functions
 ### hydropathy
