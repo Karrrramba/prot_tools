@@ -224,93 +224,75 @@ protein_summary <- function(aa_seq){
   
 }
 
-
-
-# digest proteins
+# specificty: 
 digest_protein <- function(aa_seq, 
                            missed = 0, 
-                           specificity = c("P", "A"), 
+                           specificity = c("PA"),  #given as string of one-letter code divided by a pipe ("|") for exceptions, e.g. "KR|P" for trypsin
                            combined = TRUE,
                            min_length = 1, 
                            min_charge = 1,
-                           tabulate = TRUE) {
+                           ommit = NA) {
   
   # allow multi-protease digestion
-  
-  # loop specificities
-  
-  # if (combined == TRUE) {
-  #   digest all peptides sequentially
-  # }
   aa_seq <- transform_sequence(aa_seq)
   
-  spec_start <- NULL
-  spec_stop <- NULL
-  results <- NULL
-
-  peptides <- ""
-  current_pep <- ""
-  aa_index <- ""
-
-  for (aa in aa_seq) {
-    current_pep <- paste0(current_pep, aa)
-    # If aa is protease-specific cut peptide
-    if (aa %in% specificity){
-      peptides <- append(peptides, current_pep)
-      if(missed == 0){
+  # Store created peptides
+  peptides <- character()
+  
+  # Function to perform digestion for a given protease specificity
+  digest_for_protease <- function(aa_seq, specificity, missed) {
+    
+    current_pep <- ""
+    temp_peptides <- character()
+    
+    for (aa in aa_seq) {
+      current_pep <- paste0(current_pep, aa)
+      
+      # If aa is protease-specific cut peptide
+      if (aa %in% specificity) {
+        temp_peptides <- c(temp_peptides, current_pep)
+        if (missed == 0) {
+          current_pep <- ""
+        }
+      }
+      
+      # If max(missed): add to peptides and reset current_pep
+      if (sum(stringr::str_count(current_pep, specificity) == missed + 1)) {
+        temp_peptides <- c(temp_peptides, current_pep)
         current_pep <- ""
       }
     }
-    # if max(missed): add to peptides and reset current_pep
-    if (sum(stringr::str_count(current_pep, specificity) == missed + 1)){
-      peptides <- append(peptides, current_pep)
-      current_pep <- ""
-    }
-  }  
-      
-  if (nchar(current_pep) > 0){
-    peptides <- append(peptides, current_pep)
-  }
     
-  peptides <- Filter(function(i) nchar(i) >= min_length, peptides)
+    if (nchar(current_pep) > 0) {
+      temp_peptides <- c(temp_peptides, current_pep)
+    }
+    
+    return(temp_peptides)
+  }
   
-  # filter results for peptides with specified min_charge
-  peptides <- peptides[which(stringr::str_count(peptides, "K|H|R") >= min_charge)]
+  # Loop through proteases if combined == FALSE, or digest them together if combined == TRUE
+  if (combined) {
+    # Combine all specificity rules into a single digestion pass
+    spec <- unlist(strsplit(toupper(gsub("\\|", "", specificity)), NULL))
+    peptides <- digest_for_protease(aa_seq, spec, missed)
+  } else {
+    # Perform separate digestions for each specificity
+    for (spec in specificity) {
+      spec <- unlist(strsplit(toupper(gsub("\\|", "", spec)), NULL))
+      peptides <- c(peptides, digest_for_protease(aa_seq, spec, missed))
+    }
+  }
+  
+  # Filter peptides based on minimum length
+  peptides <- peptides[nchar(peptides) >= min_length]
+  
+  # Filter peptides for specified minimum charge
+  peptides <- peptides[sapply(peptides, function(pep) stringr::str_count(pep, "K|H|R") >= min_charge - 1)]
+  
+  # Filter peptides for unwanted amino acids
+  peptides <- peptides[!stringr::str_detect(peptides, paste(ommit, collapse = "|"))]
   
   return(peptides)
-      
-      # count basic aas in peptide
-      # basic_aa <- c("K", "R", "H")
-      # acidic_aa <- c("D", "E")
-      # n_base <- NA
-      # n_acid <- NA
-    
-      # for (p in peptides) {
-      #   for (aa in p)
-      #   n_base <- sum(stringr::str_count(aa, basic_aa))
-      #   n_acid <- sum(stringr::str_count(aa, acidic_aa))
-      # }
-      
-      # return(results)
-    
-    # if (tabulate == TRUE) {
-    #   results <- data.frame(
-    #     "protein" = NA,
-    #     "peptide" = NA,
-    #     "missed_cleavages" = NA,
-    #     "basic_aas" = n_base,
-    #     "acidic_aas" = n_acid
-    #   )
 }
 
-digest_protein(bsa_seq, specificity = c("P", "A"),min_length = 5, min_charge = 2)
-
-basic_aa <- c("K", "R", "H")
-acidic_aa <- c("D", "E")
-n_base <- NA
-n_acid <- NA
-for (p in peptides) {
-  for (aa in p)
-    n_base <- sum(stringr::str_count(aa, basic_aa))
-    n_acid <- sum(stringr::str_count(aa, acidic_aa))
-}
+digest_protein(bsa_seq, specificity = c("KR"), min_length = 3, min_charge = 3)
