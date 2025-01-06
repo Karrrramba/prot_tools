@@ -1,4 +1,5 @@
 # prot_tools
+#' @imports 
 
 ###load data
 load('data-raw/hydropath_ref.rda')
@@ -72,7 +73,8 @@ calculate_hydropathy_index <- function(aa_seq) {
 }
 
 ### identify modifications
-unlist(stringr::str_extract_all(s, "([A-Z]\\([a-z]+\\))"))
+
+# unlist(stringr::str_extract_all(s, "([A-Z]\\([a-z]+\\))"))
 # extract mod
 # check with mod_list
 # extract mod_mass and add to aa_mass
@@ -224,7 +226,7 @@ protein_summary <- function(aa_seq){
   
 }
 
-# specificty: 
+# in-silico digest: 
 digest_protein <- function(aa_seq, 
                            missed = 0, 
                            specificity = c("PA"),  #given as string of one-letter code divided by a pipe ("|") for exceptions, e.g. "KR|P" for trypsin
@@ -270,7 +272,7 @@ digest_protein <- function(aa_seq,
     return(temp_peptides)
   }
   
-  # Loop through proteases if combined == FALSE, or digest them together if combined == TRUE
+  # Loop over protease specificities if combined == FALSE, or digest them together if combined == TRUE
   if (combined) {
     # Combine all specificity rules into a single digestion pass
     spec <- unlist(strsplit(toupper(gsub("\\|", "", specificity)), NULL))
@@ -292,7 +294,23 @@ digest_protein <- function(aa_seq,
   # Filter peptides for unwanted amino acids
   peptides <- peptides[!stringr::str_detect(peptides, paste(ommit, collapse = "|"))]
   
-  return(peptides)
+  # Calculate peptide masses
+  masses <- unname(sapply(peptides, function(pep) calculate_mass_avg(pep)))
+  masses2 <- masses[match(names(masses), names(peptides))] #ensure correct matching by peptide, requires names peptides!!!
+  # calculate m/z based on maximum charge available
+  charges <-  stringr::str_count(peptides, "K|H|R")
+  m_z <- masses 
+  
+  # return(peptides)
+  
+  res <- data.frame(
+    peptide = peptides,
+    charges = charges,
+    mass = masses
+  )
+  
+  return(res)
 }
 
-digest_protein(bsa_seq, specificity = c("KR"), min_length = 3, min_charge = 3)
+pl <- digest_protein(bsa_seq, specificity = c("KR"), min_length = 3, min_charge = 1)
+
